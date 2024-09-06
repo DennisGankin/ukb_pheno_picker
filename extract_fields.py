@@ -1,4 +1,3 @@
-
 import argparse
 import glob
 import os
@@ -45,11 +44,11 @@ def main(datafields_filename):
     datafields['field_id_prefix'] = 'p' + (datafields['field_id']).astype(str)
     field_ids = datafields['field_id']
 
-    field_names = field_names_for_ids(field_ids)
+    field_names = field_names_for_ids(field_ids, data_dict_df)
 
-    project = os.popen("dx env | grep project- | awk -F '\t' '{print $2}'").read().rstrip()
-    record = os.popen("dx describe *dataset | grep  record- | awk -F ' ' '{print $2}'").read().rstrip().split('\n')[0]
-    dataset = project + ":" + record
+    #project = os.popen("dx env | grep project- | awk -F '\t' '{print $2}'").read().rstrip()
+    #record = os.popen("dx describe *dataset | grep  record- | awk -F ' ' '{print $2}'").read().rstrip().split('\n')[0]
+    #dataset = project + ":" + record
 
     cmd = ["dx", "extract_dataset", dataset, "--fields", field_names, "--delimiter", ",", "--output", "extracted_data.sql", "--sql"]
     subprocess.check_call(cmd)
@@ -67,8 +66,11 @@ def main(datafields_filename):
 
     pull_df = pull_df.rename(columns=lambda x: re.sub('participant.','',x))
     pull_df_renamed = pull_df
-    name_mapping = dict(zip(datafields['field_id'], datafields['field_short'])) # unly workf for non array datafields TODO use re to match to array fields
-    pull_df_renamed.columns = pull_df_renamed.columns.map(lambda x: name_mapping.get(x, x))
+    name_mapping = dict(zip(field_ids, datafields['field_name'])) 
+    def map_name(x):
+        xsplit = x.split('_')
+        return name_mapping.get(xsplit[0], xsplit[0]) + ('_' + xsplit[1] if len(xsplit) > 1 else '')
+    pull_df_renamed.columns = pull_df_renamed.columns.map(lambda x: map_name(x))
 
     print(pull_df_renamed)
 
@@ -83,5 +85,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Call the main function with the provided filename
-    main(args.dataframe_filename)
-
+    main(args.datafields_filename)
